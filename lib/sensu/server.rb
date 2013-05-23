@@ -366,10 +366,11 @@ module Sensu
             exchange_name = handler[:exchange][:name]
             exchange_type = handler[:exchange].has_key?(:type) ? handler[:exchange][:type].to_sym : :direct
             exchange_options = handler[:exchange].reject do |key, value|
-              [:name, :type].include?(key)
+              [:name, :type, :persistent_messages].include?(key)
             end
+            publish_options = handler[:exchange].has_key?(:persistent_messages) ? {:persistent => handler[:exchange][:persistent_messages]} : {}
             unless event_data.empty?
-              @amq.method(exchange_type).call(exchange_name, exchange_options).publish(event_data)
+              @amq.method(exchange_type).call(exchange_name, exchange_options).publish(event_data, publish_options)
             end
             @handlers_in_progress_count -= 1
           when 'extension'
