@@ -282,6 +282,7 @@ module Sensu
             :mutator => mutator,
             :error => error.to_s
           })
+          @handlers_in_progress_count -= 1
         end
         execute_command(mutator[:command], Oj.dump(event), on_error) do |output, status|
           if status == 0
@@ -298,15 +299,17 @@ module Sensu
           else
             @logger.error('mutator error', {
               :event => event,
-              :extension => extension,
+              :extension => extension.definition,
               :error => 'non-zero exit status (' + status.to_s + '): ' + output
             })
+            @handlers_in_progress_count -= 1
           end
         end
       else
         @logger.error('unknown mutator', {
           :mutator_name => mutator_name
         })
+        @handlers_in_progress_count -= 1
       end
     end
 
@@ -503,19 +506,6 @@ module Sensu
       end
     end
 
-    def valid_result?(result)
-      if result[:client].is_a?(String) && result[:check].is_a?(Hash)
-        result[:check][:name].is_a?(String) &&
-          result[:check][:output].is_a?(String) &&
-          result[:check][:status].is_a?(Integer)
-      else
-        @logger.warn('invalid result', {
-          :result => result
-        })
-        false
-      end
-    end
-
     def setup_results
       @logger.debug('subscribing to results')
       @result_queue = @amq.queue!('results')
@@ -525,9 +515,7 @@ module Sensu
         @logger.debug('received result', {
           :result => result
         })
-        if valid_result?(result)
-          process_result(result)
-        end
+        process_result(result)
         EM::next_tick do
           header.ack
         end

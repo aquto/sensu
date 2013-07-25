@@ -23,6 +23,7 @@ describe 'Sensu::Client' do
         queue.subscribe do |payload|
           keepalive = Oj.load(payload)
           keepalive[:name].should eq('i-424242')
+          keepalive[:service][:password].should eq('REDACTED')
           async_done
         end
       end
@@ -67,7 +68,7 @@ describe 'Sensu::Client' do
         queue.subscribe do |payload|
           result = Oj.load(payload)
           result[:client].should eq('i-424242')
-          result[:check][:output].should eq('WARNING')
+          result[:check][:output].should eq("WARNING\n")
           result[:check].should have_key(:executed)
           async_done
         end
@@ -80,13 +81,12 @@ describe 'Sensu::Client' do
       result_queue do |queue|
         @client.setup_rabbitmq
         check = check_template
-        check[:command] = 'echo -n :::nested.attribute|default::: :::missing|default:::'
+        check[:command] = 'echo :::nested.attribute|default::: :::missing|default::: :::missing|:::'
         @client.execute_check_command(check)
         queue.subscribe do |payload|
           result = Oj.load(payload)
           result[:client].should eq('i-424242')
-          result[:check][:output].should eq('true default')
-          result[:check][:command_executed] = 'echo -n true default'
+          result[:check][:output].should eq("true default\n")
           async_done
         end
       end
@@ -137,7 +137,7 @@ describe 'Sensu::Client' do
         queue.subscribe do |payload|
           result = Oj.load(payload)
           result[:client].should eq('i-424242')
-          result[:check][:output].should eq('WARNING')
+          result[:check][:output].should eq("WARNING\n")
           result[:check][:status].should eq(1)
           async_done
         end

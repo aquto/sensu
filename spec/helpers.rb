@@ -4,7 +4,7 @@ module Helpers
   def setup_options
     @options = {
       :config_file => File.join(File.dirname(__FILE__), 'config.json'),
-      :config_dir => File.join(File.dirname(__FILE__), 'conf.d'),
+      :config_dirs => [File.join(File.dirname(__FILE__), 'conf.d')],
       :extension_dir => File.join(File.dirname(__FILE__), 'extensions'),
       :log_level => :fatal
     }
@@ -106,7 +106,7 @@ module Helpers
   def check_template
     {
       :name => 'foobar',
-      :command => 'echo -n WARNING && exit 1',
+      :command => 'echo WARNING && exit 1',
       :issued => epoch
     }
   end

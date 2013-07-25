@@ -20,14 +20,16 @@ describe 'Sensu::Settings' do
     @settings.handler_exists?('nonexistent').should be_false
     @settings.check_exists?('merger').should be_true
     @settings[:checks][:merger][:command].should eq('this will be overwritten')
-    @settings.load_directory(options[:config_dir])
+    options[:config_dirs].each do |config_dir|
+      @settings.load_directory(config_dir)
+    end
     @settings[:checks][:merger][:command].should eq('echo -n merger')
     @settings[:checks][:merger][:subscribers].should eq(['test'])
     @settings[:checks][:merger][:interval].should eq(60)
   end
 
   it 'can ignore invalid configuration snippets' do
-    file_name = File.join(options[:config_dir], 'invalid.json')
+    file_name = File.join(options[:config_dirs].first, 'invalid.json')
     File.open(file_name, 'w') do |file|
       file.write('invalid')
     end
@@ -51,7 +53,9 @@ describe 'Sensu::Settings' do
     with_stdout_redirect do
       lambda { @settings.validate }.should raise_error(SystemExit)
     end
-    @settings.load_directory(options[:config_dir])
+    options[:config_dirs].each do |config_dir|
+      @settings.load_directory(config_dir)
+    end
     @settings.validate
   end
 

@@ -47,7 +47,8 @@ module Sensu
     end
 
     def publish_keepalive
-      payload = @settings[:client].merge(:timestamp => Time.now.to_i)
+      keepalive = @settings[:client].merge(:timestamp => Time.now.to_i)
+      payload = redact_passwords(keepalive)
       @logger.debug('publishing keepalive', {
         :payload => payload
       })
@@ -78,7 +79,7 @@ module Sensu
     def substitute_command_tokens(check)
       unmatched_tokens = Array.new
       substituted = check[:command].gsub(/:::(.*?):::/) do
-        token, default = $1.to_s.split('|')
+        token, default = $1.to_s.split('|', -1)
         matched = token.split('.').inject(@settings[:client]) do |client, attribute|
           if client[attribute].nil?
             default.nil? ? break : default
@@ -103,7 +104,6 @@ module Sensu
         command, unmatched_tokens = substitute_command_tokens(check)
         check[:executed] = Time.now.to_i
         if unmatched_tokens.empty?
-          check[:command_executed] = command
           execute = Proc.new do
             @logger.debug('executing check command', {
               :check => check
@@ -189,18 +189,11 @@ module Sensu
           queue.bind(@amq.fanout(exchange_name))
         end
         queue.subscribe do |payload|
-          begin
-            check = Oj.load(payload)
-            @logger.info('received check request', {
-              :check => check
-            })
-            process_check(check)
-          rescue Oj::ParseError => error
-            @logger.warn('check request payload must be valid json', {
-              :payload => payload,
-              :error => error.to_s
-            })
-          end
+          check = Oj.load(payload)
+          @logger.info('received check request', {
+            :check => check
+          })
+          process_check(check)
         end
       end
     end
